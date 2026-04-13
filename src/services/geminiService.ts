@@ -61,7 +61,12 @@ export const generateShapesFromPrompt = async (prompt: string): Promise<Partial<
     });
 
     if (response.text) {
-      const data = JSON.parse(response.text);
+      let text = response.text;
+      // Strip markdown code blocks if present
+      if (text.startsWith("```")) {
+        text = text.replace(/^```json/, "").replace(/^```/, "").replace(/```$/, "").trim();
+      }
+      const data = JSON.parse(text);
       return data as Partial<Shape>[];
     }
     return [];

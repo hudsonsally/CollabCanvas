@@ -4,6 +4,10 @@ export enum ShapeType {
   TEXT = 'text',
   LINE = 'line',
   PENCIL = 'pencil',
+  HIGHLIGHTER = 'highlighter',
+  ERASER = 'eraser',
+  BRUSH = 'brush',
+  SPRAY = 'spray',
 }
 
 export interface Shape {
@@ -38,7 +42,10 @@ export enum Tool {
   TEXT = 'text',
   LINE = 'line',
   PENCIL = 'pencil',
+  HIGHLIGHTER = 'highlighter',
   ERASER = 'eraser',
+  BRUSH = 'brush',
+  SPRAY = 'spray',
   AI_MAGIC = 'ai_magic',
 }
 
