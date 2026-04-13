@@ -1,0 +1,5 @@
+{
+  "name": "CollabCanvas",
+  "description": "A real-time collaborative whiteboard powered by Firebase and enhanced with Gemini AI for generative vector graphics.",
+  "requestFramePermissions": []
+}

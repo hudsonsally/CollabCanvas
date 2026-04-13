@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "Shape": {
+      "title": "Shape",
+      "description": "A geometric shape on the canvas",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["pencil", "line", "rectangle", "circle", "text"] },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "radius": { "type": "number" },
+        "text": { "type": "string" },
+        "fill": { "type": "string" },
+        "stroke": { "type": "string" },
+        "strokeWidth": { "type": "number" },
+        "points": { "type": "array", "items": { "type": "number" } },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["type", "createdAt"]
+    },
+    "Cursor": {
+      "title": "Cursor",
+      "description": "User cursor position",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "lastActive": { "type": "number" }
+      },
+      "required": ["id", "x", "y", "lastActive"]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomId}/shapes/{shapeId}": {
+      "schema": "Shape",
+      "description": "Shapes in a specific drawing room"
+    },
+    "/rooms/{roomId}/cursors/{cursorId}": {
+      "schema": "Cursor",
+      "description": "User cursors in a specific drawing room"
+    }
+  }
+}
