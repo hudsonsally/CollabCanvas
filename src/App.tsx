@@ -6,6 +6,7 @@ import Canvas from './components/Canvas';
 import Toolbar from './components/Toolbar';
 import AiSidebar from './components/AiSidebar';
 import PropertiesPanel from './components/PropertiesPanel';
+import JoinRoom from './components/JoinRoom';
 import { v4 as uuidv4 } from 'uuid';
 
 const USER_ID = Math.random().toString(36).substr(2, 9);
@@ -13,19 +14,14 @@ const USER_COLOR = USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)];
 const NAMES = ['Alex', 'Sam', 'Jordan', 'Taylor', 'Casey', 'Riley'];
 const USER_NAME = NAMES[Math.floor(Math.random() * NAMES.length)];
 
-// Helper to get or create room ID
-const getRoomId = () => {
+// Helper to get room ID from URL
+const getRoomIdFromUrl = () => {
     const params = new URLSearchParams(window.location.search);
-    const fromUrl = params.get('room');
-    if (fromUrl) return fromUrl;
-
-    // Create new room if none exists
-    const newRoomId = uuidv4().slice(0, 8); // Short ID for easier sharing
-    return newRoomId;
+    return params.get('room');
 };
 
 const App: React.FC = () => {
-    const [roomId, setRoomId] = useState(getRoomId());
+    const [roomId, setRoomId] = useState<string | null>(getRoomIdFromUrl());
     const [shapes, setShapes] = useState<Shape[]>([]);
     const [cursors, setCursors] = useState<UserCursor[]>([]);
     const [activeTool, setActiveTool] = useState<Tool>(Tool.SELECT);
@@ -42,16 +38,29 @@ const App: React.FC = () => {
 
     const svgRef = useRef<SVGSVGElement>(null);
 
+    // Handle joining a room with invite code
+    const handleJoinRoom = (inviteCode: string) => {
+        const newRoomId = inviteCode.trim();
+        setRoomId(newRoomId);
+        // Update URL with the room parameter
+        const newUrl = `${window.location.pathname}?room=${newRoomId}`;
+        window.history.replaceState({}, '', newUrl);
+    };
+
     // Sync Room ID with URL
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('room') !== roomId) {
-            const newUrl = `${window.location.pathname}?room=${roomId}`;
-            window.history.replaceState({}, '', newUrl);
+        if (roomId) {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('room') !== roomId) {
+                const newUrl = `${window.location.pathname}?room=${roomId}`;
+                window.history.replaceState({}, '', newUrl);
+            }
         }
     }, [roomId]);
 
     useEffect(() => {
+        if (!roomId) return; // Don't initialize Firebase until we have a room
+
         const db = initFirebase();
         if (!db) {
             setFirebaseError(true);
@@ -110,34 +119,34 @@ const App: React.FC = () => {
             if (firebaseError) {
                 setShapes(prev => [...prev, newShape]);
             } else {
-                addShapeToRemote(roomId, newShape);
+                addShapeToRemote(roomId!, newShape);
             }
         });
     };
 
     const handleUpdateShape = (updates: Partial<Shape>) => {
         if (selectedShapeId) {
-            updateShapeInRemote(roomId, selectedShapeId, updates);
+            updateShapeInRemote(roomId!, selectedShapeId, updates);
         }
     };
 
     const handleDeleteShape = async () => {
         if (selectedShapeId) {
-            await deleteShapeFromRemote(roomId, selectedShapeId);
+            await deleteShapeFromRemote(roomId!, selectedShapeId);
             setSelectedShapeId(null);
         }
     };
 
     const handleBringToFront = () => {
         if (selectedShapeId) {
-            updateShapeInRemote(roomId, selectedShapeId, { createdAt: Date.now() });
+            updateShapeInRemote(roomId!, selectedShapeId, { createdAt: Date.now() });
         }
     };
 
     const handleSendToBack = () => {
         if (selectedShapeId && shapes.length > 0) {
             const minTime = Math.min(...shapes.map(s => s.createdAt));
-            updateShapeInRemote(roomId, selectedShapeId, { createdAt: minTime - 1000 });
+            updateShapeInRemote(roomId!, selectedShapeId, { createdAt: minTime - 1000 });
         }
     };
 
@@ -161,6 +170,11 @@ const App: React.FC = () => {
     };
 
     const selectedShape = shapes.find(s => s.id === selectedShapeId);
+
+    // If no room ID, show join room page
+    if (!roomId) {
+        return <JoinRoom onJoinRoom={handleJoinRoom} />;
+    }
 
     return (
         <div className="w-full h-full flex flex-col overflow-hidden bg-gray-100">
