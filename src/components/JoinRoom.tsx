@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { User } from 'firebase/auth';
 
 interface JoinRoomProps {
+  user: User | null;
   onJoinRoom: (roomId: string) => void;
+  onCreateRoom: () => void;
+  onShowLogin: () => void;
 }
 
-type Mode = 'join' | 'create';
 
-const JoinRoom: React.FC<JoinRoomProps> = ({ onJoinRoom }) => {
-  const [mode, setMode] = useState<Mode>('join');
+const JoinRoom: React.FC<JoinRoomProps> = ({ user, onJoinRoom, onCreateRoom, onShowLogin }) => {
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
 
@@ -31,11 +32,6 @@ const JoinRoom: React.FC<JoinRoomProps> = ({ onJoinRoom }) => {
     onJoinRoom(trimmedCode);
   };
 
-  const handleCreateRoom = () => {
-    const newRoomId = uuidv4().slice(0, 8); // Short ID for easier sharing
-    onJoinRoom(newRoomId);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
@@ -44,86 +40,62 @@ const JoinRoom: React.FC<JoinRoomProps> = ({ onJoinRoom }) => {
           <p className="text-gray-600">Collaborative drawing made simple</p>
         </div>
 
-        {/* Mode Toggle */}
-        <div className="flex rounded-lg bg-gray-100 p-1 mb-6">
+        <form onSubmit={handleJoinSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="inviteCode" className="block text-sm font-medium text-gray-700 mb-2">
+              Invite Code
+            </label>
+            <input
+              type="text"
+              id="inviteCode"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              placeholder="Enter your invite code..."
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+              autoFocus
+            />
+            {error && (
+              <p className="mt-2 text-sm text-red-600">{error}</p>
+            )}
+          </div>
+
           <button
-            onClick={() => setMode('join')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              mode === 'join'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
+            type="submit"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
             Join Room
           </button>
-          <button
-            onClick={() => setMode('create')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              mode === 'create'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Create Room
-          </button>
-        </div>
+        </form>
 
-        {mode === 'join' ? (
-          <>
-            <form onSubmit={handleJoinSubmit} className="space-y-6">
-              <div>
-                <label htmlFor="inviteCode" className="block text-sm font-medium text-gray-700 mb-2">
-                  Invite Code
-                </label>
-                <input
-                  type="text"
-                  id="inviteCode"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value)}
-                  placeholder="Enter your invite code..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                  autoFocus
-                />
-                {error && (
-                  <p className="mt-2 text-sm text-red-600">{error}</p>
-                )}
-              </div>
-
+        <div className="mt-8 space-y-4">
+          {user ? (
+            <>
               <button
-                type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-              >
-                Join Room
-              </button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-500">
-                Need an invite code? Ask the room creator to share their canvas link.
-              </p>
-            </div>
-          </>
-        ) : (
-          <div className="space-y-6">
-            <div className="text-center">
-              <p className="text-gray-600 mb-6">
-                Create a new collaborative drawing room that others can join.
-              </p>
-              <button
-                onClick={handleCreateRoom}
+                type="button"
+                onClick={onCreateRoom}
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
               >
                 Create New Room
               </button>
-            </div>
-
-            <div className="text-center">
-              <p className="text-sm text-gray-500">
-                After creating, share the invite code with others to collaborate.
+              <p className="text-sm text-gray-500 text-center">
+                Signed in as <span className="font-medium text-gray-700">{user.email}</span>. You can create rooms and invite others.
               </p>
-            </div>
-          </div>
-        )}
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onShowLogin}
+                className="w-full bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-4 rounded-lg border border-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              >
+                Sign In to Create Room
+              </button>
+              <p className="text-sm text-gray-500 text-center">
+                You can still join an existing room and collaborate as a guest.
+              </p>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

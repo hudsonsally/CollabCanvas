@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { initFirebase, subscribeToShapes, subscribeToCursors, addShapeToRemote, clearCanvasRemote, updateShapeInRemote, deleteShapeFromRemote } from './services/firebase';
+import { initFirebase, subscribeToShapes, subscribeToCursors, addShapeToRemote, clearCanvasRemote, updateShapeInRemote, deleteShapeFromRemote, createRoomRemote } from './services/firebase';
+import { initializeAuth, signOut } from './services/authService';
 import { Shape, Tool, UserCursor, ShapeType } from './types';
 import { USER_COLORS, DEFAULT_FILL, DEFAULT_STROKE } from './constants';
 import Canvas from './components/Canvas';
@@ -7,6 +8,8 @@ import Toolbar from './components/Toolbar';
 import AiSidebar from './components/AiSidebar';
 import PropertiesPanel from './components/PropertiesPanel';
 import JoinRoom from './components/JoinRoom';
+import Login from './components/Login';
+import { useAuth } from './contexts/AuthContext';
 import { v4 as uuidv4 } from 'uuid';
 
 const USER_ID = Math.random().toString(36).substr(2, 9);
@@ -21,6 +24,7 @@ const getRoomIdFromUrl = () => {
 };
 
 const App: React.FC = () => {
+    const { user, isLoading: authLoading } = useAuth();
     const [roomId, setRoomId] = useState<string | null>(getRoomIdFromUrl());
     const [shapes, setShapes] = useState<Shape[]>([]);
     const [cursors, setCursors] = useState<UserCursor[]>([]);
@@ -29,6 +33,7 @@ const App: React.FC = () => {
     const [firebaseError, setFirebaseError] = useState(false);
     const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
+    const [showLogin, setShowLogin] = useState(false);
 
     // Color & Style State
     const [strokeColor, setStrokeColor] = useState<string>('#000000');
@@ -38,6 +43,12 @@ const App: React.FC = () => {
 
     const svgRef = useRef<SVGSVGElement>(null);
 
+    // Initialize auth on component mount
+    useEffect(() => {
+        initializeAuth();
+        initFirebase();
+    }, []);
+
     // Handle joining a room with invite code
     const handleJoinRoom = (inviteCode: string) => {
         const newRoomId = inviteCode.trim();
@@ -46,6 +57,31 @@ const App: React.FC = () => {
         const newUrl = `${window.location.pathname}?room=${newRoomId}`;
         window.history.replaceState({}, '', newUrl);
     };
+
+    const handleCreateRoom = async () => {
+        if (!user) {
+            setShowLogin(true);
+            return;
+        }
+
+        const newRoomId = uuidv4().slice(0, 8);
+        try {
+            await createRoomRemote(newRoomId);
+            handleJoinRoom(newRoomId);
+        } catch (error) {
+            console.error('Failed to create room:', error);
+        }
+    };
+
+    const handleShowLogin = () => {
+        setShowLogin(true);
+    };
+
+    useEffect(() => {
+        if (user) {
+            setShowLogin(false);
+        }
+    }, [user]);
 
     // Sync Room ID with URL
     useEffect(() => {
@@ -169,11 +205,36 @@ const App: React.FC = () => {
         document.body.removeChild(link);
     };
 
+    const handleSignOut = async () => {
+        try {
+            await signOut();
+        } catch (error) {
+            console.error('Failed to sign out:', error);
+        }
+    };
+
     const selectedShape = shapes.find(s => s.id === selectedShapeId);
+
+    // Show loading screen while checking authentication
+    if (authLoading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center">
+                <div className="text-center">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-4">CollabCanvas</h1>
+                    <p className="text-gray-600">Loading...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // If the user specifically requested login, show the login page
+    if (showLogin && !user) {
+        return <Login />;
+    }
 
     // If no room ID, show join room page
     if (!roomId) {
-        return <JoinRoom onJoinRoom={handleJoinRoom} />;
+        return <JoinRoom onJoinRoom={handleJoinRoom} onCreateRoom={handleCreateRoom} onShowLogin={handleShowLogin} user={user} />;
     }
 
     return (
@@ -205,9 +266,26 @@ const App: React.FC = () => {
                     )}
                 </button>
 
-                <div className="bg-white px-3 py-1 rounded-full shadow-sm border border-gray-200 text-xs font-medium text-gray-600 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: USER_COLOR }}></span>
-                    {USER_NAME} (You)
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-200">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: USER_COLOR }}></span>
+                        <span className="text-xs font-medium text-gray-600">{user?.email || `${USER_NAME} (Guest)`}</span>
+                    </div>
+                    {user ? (
+                        <button
+                            onClick={handleSignOut}
+                            className="px-3 py-1 rounded-full text-xs font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+                        >
+                            Sign Out
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleShowLogin}
+                            className="px-3 py-1 rounded-full text-xs font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+                        >
+                            Sign In
+                        </button>
+                    )}
                 </div>
             </div>
 

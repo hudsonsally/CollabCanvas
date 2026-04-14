@@ -129,6 +129,7 @@ export const initFirebase = () => {
 
 // --- Room-aware Collection Helpers ---
 
+const getRoomDocRef = (roomId: string) => doc(db, 'rooms', roomId);
 const getShapesRef = (roomId: string) => collection(db, 'rooms', roomId, 'shapes');
 const getCursorsRef = (roomId: string) => collection(db, 'rooms', roomId, 'cursors');
 
@@ -148,6 +149,20 @@ export const subscribeToShapes = (roomId: string, callback: (shapes: Shape[]) =>
   }, (error) => {
     handleFirestoreError(error, OperationType.GET, path);
   });
+};
+
+export const createRoomRemote = async (roomId: string) => {
+  if (!db) return;
+  const path = `rooms/${roomId}`;
+  try {
+    const roomRef = getRoomDocRef(roomId);
+    await setDoc(roomRef, cleanPayload({
+      createdAt: Date.now(),
+      createdBy: auth?.currentUser?.uid || null
+    }));
+  } catch (e) {
+    handleFirestoreError(e, OperationType.CREATE, path);
+  }
 };
 
 export const addShapeToRemote = async (roomId: string, shape: Shape) => {
