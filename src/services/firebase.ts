@@ -104,11 +104,11 @@ const cleanPayload = (data: any) => {
 export const initFirebase = () => {
   if (!getApps().length) {
     app = initializeApp(firebaseConfig);
-    db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+    db = getFirestore(app);
     auth = getAuth(app);
   } else {
     app = getApps()[0];
-    db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+    db = getFirestore(app);
     auth = getAuth(app);
   }
 
