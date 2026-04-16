@@ -20,7 +20,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const isText = selectedShape.type === ShapeType.TEXT;
 
   return (
-    <div className="absolute top-20 right-4 bg-white p-4 rounded-xl shadow-xl border border-gray-200 w-64 z-40 animate-in fade-in slide-in-from-right-5 duration-200">
+    <div className="absolute top-20 right-4 bg-white p-4 rounded-xl shadow-xl border border-gray-200 w-64 max-w-xs md:w-72 lg:w-80 z-40 animate-in fade-in slide-in-from-right-5 duration-200 overflow-y-auto max-h-[calc(100vh-120px)]">
       <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
         <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wider">Properties</h3>
         <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">

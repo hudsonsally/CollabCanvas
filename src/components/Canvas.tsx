@@ -216,30 +216,11 @@ const Canvas = forwardRef<SVGSVGElement, CanvasProps>(({
     const handleShapePointerDown = (e: React.PointerEvent, shapeId: string) => {
         if ((activeTool !== Tool.SELECT && activeTool !== Tool.AI_MAGIC) || isSpacePressed) return;
         e.stopPropagation();
-        e.currentTarget.setPointerCapture(e.pointerId);
 
         const shape = shapes.find(s => s.id === shapeId);
         if (!shape) return;
 
         onSelectShape(shapeId);
-        setInteractionMode(InteractionMode.MOVING_SHAPE);
-
-        const { x, y } = toWorld(e.clientX, e.clientY);
-        setInitialClickPos({ x, y });
-        setInitialShapeState({ ...shape });
-    };
-
-    const handleResizePointerDown = (e: React.PointerEvent) => {
-        if (activeTool !== Tool.SELECT && activeTool !== Tool.AI_MAGIC) return;
-        e.stopPropagation();
-        const shape = shapes.find(s => s.id === selectedShapeId);
-        if (shape) {
-            setInteractionMode(InteractionMode.RESIZING_SHAPE);
-            setInitialShapeState({ ...shape });
-            const { x, y } = toWorld(e.clientX, e.clientY);
-            setInitialClickPos({ x, y });
-            e.currentTarget.setPointerCapture(e.pointerId);
-        }
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
@@ -301,37 +282,6 @@ const Canvas = forwardRef<SVGSVGElement, CanvasProps>(({
             }
             setDraftShape(updatedShape);
         }
-
-        // MOVING
-        if (interactionMode === InteractionMode.MOVING_SHAPE && selectedShapeId && initialShapeState) {
-            const dx = x - initialClickPos.x;
-            const dy = y - initialClickPos.y;
-
-            const updatedShape = {
-                ...initialShapeState,
-                x: initialShapeState.x + dx,
-                y: initialShapeState.y + dy
-            };
-
-            if (Math.random() > 0.5) {
-                updateShapeInRemote(roomId, selectedShapeId, { x: updatedShape.x, y: updatedShape.y });
-            }
-        }
-
-        // RESIZING
-        if (interactionMode === InteractionMode.RESIZING_SHAPE && selectedShapeId && initialShapeState) {
-            const dx = x - initialClickPos.x;
-            const dy = y - initialClickPos.y;
-
-            if (initialShapeState.type === ShapeType.RECTANGLE) {
-                const newWidth = Math.max(10, (initialShapeState.width || 0) + dx);
-                const newHeight = Math.max(10, (initialShapeState.height || 0) + dy);
-                updateShapeInRemote(roomId, selectedShapeId, { width: newWidth, height: newHeight });
-            } else if (initialShapeState.type === ShapeType.CIRCLE) {
-                const newRadius = Math.max(5, (initialShapeState.radius || 0) + dx);
-                updateShapeInRemote(roomId, selectedShapeId, { radius: newRadius });
-            }
-        }
     };
 
     const handlePointerUp = (e: React.PointerEvent) => {
@@ -390,8 +340,6 @@ const Canvas = forwardRef<SVGSVGElement, CanvasProps>(({
     const getCursorStyle = () => {
         if (interactionMode === InteractionMode.PANNING || isSpacePressed) return 'grab';
         if (activeTool === Tool.ERASER) return 'none'; // Hide default cursor for custom eraser
-        if (interactionMode === InteractionMode.MOVING_SHAPE) return 'move';
-        if (interactionMode === InteractionMode.RESIZING_SHAPE) return 'nwse-resize';
         if (activeTool === Tool.SELECT || activeTool === Tool.AI_MAGIC) return 'default';
         return 'crosshair';
     };
@@ -465,8 +413,8 @@ const Canvas = forwardRef<SVGSVGElement, CanvasProps>(({
                     stroke={shape.stroke}
                     strokeWidth={shape.strokeWidth}
                     fill="none"
-                    strokeLinecap={shape.type === ShapeType.ERASER ? "square" : "round"}
-                    strokeLinejoin={shape.type === ShapeType.ERASER ? "miter" : "round"}
+                    strokeLinecap={shape.type === ShapeType.ERASER ? "round" : "round"}
+                    strokeLinejoin={shape.type === ShapeType.ERASER ? "round" : "round"}
                     style={shape.type === ShapeType.HIGHLIGHTER ? { mixBlendMode: 'multiply', opacity: 0.6 } : undefined}
                 />
             </g>
@@ -489,8 +437,8 @@ const Canvas = forwardRef<SVGSVGElement, CanvasProps>(({
             stroke={shape.stroke}
             strokeWidth={shape.strokeWidth}
             fill="none"
-            strokeLinecap={shape.type === ShapeType.ERASER ? "square" : "round"}
-            strokeLinejoin={shape.type === ShapeType.ERASER ? "miter" : "round"}
+            strokeLinecap={shape.type === ShapeType.ERASER ? "round" : "round"}
+            strokeLinejoin={shape.type === ShapeType.ERASER ? "round" : "round"}
             style={shape.type === ShapeType.HIGHLIGHTER ? { mixBlendMode: 'multiply', opacity: 0.6 } : undefined}
         />;
     }
@@ -502,7 +450,6 @@ const Canvas = forwardRef<SVGSVGElement, CanvasProps>(({
 
         const padding = 5;
         const style = { fill: "none", stroke: "#3B82F6", strokeWidth: 1.5, strokeDasharray: "4,4" };
-        const handleStyle = { fill: "#fff", stroke: "#3B82F6", strokeWidth: 1.5, cursor: "nwse-resize" };
 
         let bounds = { x: 0, y: 0, w: 0, h: 0 };
 
@@ -540,16 +487,6 @@ const Canvas = forwardRef<SVGSVGElement, CanvasProps>(({
                     {...style}
                     pointerEvents="none"
                 />
-                {(shape.type === ShapeType.RECTANGLE || shape.type === ShapeType.CIRCLE) && (
-                    <rect
-                        x={bounds.x + bounds.w + padding - 4}
-                        y={bounds.y + bounds.h + padding - 4}
-                        width={8}
-                        height={8}
-                        {...handleStyle}
-                        onPointerDown={handleResizePointerDown}
-                    />
-                )}
             </g>
         );
     };
@@ -694,9 +631,9 @@ const Canvas = forwardRef<SVGSVGElement, CanvasProps>(({
                     pointerEvents="none"
                     style={{ display: activeTool === Tool.ERASER ? 'block' : 'none' }}
                 >
-                    {/* Visual circle roughly matching hit area */}
+                    {/* Visual circle matching eraser stroke width */}
                     <circle
-                        r={currentEraserSize}
+                        r={currentEraserSize / 2}
                         fill="rgba(255, 255, 255, 0.4)"
                         stroke="#000000"
                         strokeWidth={1}

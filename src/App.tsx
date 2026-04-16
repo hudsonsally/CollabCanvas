@@ -6,7 +6,6 @@ import { USER_COLORS, DEFAULT_FILL, DEFAULT_STROKE } from './constants';
 import Canvas from './components/Canvas';
 import Toolbar from './components/Toolbar';
 import AiSidebar from './components/AiSidebar';
-import PropertiesPanel from './components/PropertiesPanel';
 import JoinRoom from './components/JoinRoom';
 import Login from './components/Login';
 import { useAuth } from './contexts/AuthContext';
@@ -303,16 +302,6 @@ const App: React.FC = () => {
                 eraserSize={eraserSize}
                 setEraserSize={setEraserSize}
             />
-
-            {selectedShape && (
-                <PropertiesPanel
-                    selectedShape={selectedShape}
-                    onUpdate={handleUpdateShape}
-                    onDelete={handleDeleteShape}
-                    onBringToFront={handleBringToFront}
-                    onSendToBack={handleSendToBack}
-                />
-            )}
 
             <div className="flex-1 relative">
                 <Canvas
